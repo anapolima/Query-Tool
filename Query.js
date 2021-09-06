@@ -103,6 +103,14 @@ class QueryTool
     {
         if (Array.isArray(_param.columns))
         {
+            const arrayColumns = _param.columns;
+            const specialRegex = /truncate$|drop$|$update$/i;
+            const specialRegexComposed = /truncate table$|drop table$|drop column$|drop database$|alter table$|add column$|create table$|create database$|create view$|create index$|update table/i;
+
+            if (specialRegex.test(JSON.stringify(arrayColumns)) || specialRegexComposed.test(JSON.stringify(arrayColumns)))
+            {
+                throw new Error ("It looks like you trying to modify the database.");
+            }
             delete _param.column
         }
 
@@ -378,12 +386,20 @@ class QueryTool
         }
     }
 
-    Insert(_insertParam)
+    Insert (_insertParam)
     {
         return this.#Insert(_insertParam);
     }
 
+    #Select = (_selectParam) =>
+    {
+        const validParameters = this.#ValidateParameters(_selectParam);
+    }
 
+    Select (_selectParam)
+    {
+        return this.#Select(_selectParam);
+    }
 }
 
 const config = {
