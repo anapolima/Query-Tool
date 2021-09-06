@@ -7,15 +7,14 @@ class QueryTool
     #method
     #config
     #client
-    #validateParams
     #insertResult
     #selectResult
     #updateResult
 
-    #insertBeginTransaction
     #insertTable
     #insertColumns
     #insertReturning
+    #insertParams
 
     #selectTable
     #selectColumns
@@ -26,12 +25,34 @@ class QueryTool
     #selectOrderBy
     #selectHaving
 
-    #updateBeginTransaction
     #updateTable
     #updateColumns
     #updateWhere
     #updateLogicalOperators
     #updateReturning
+
+    constructor ()
+    {
+        this.#insertBeginTransaction = undefined;
+        this.#insertTable = undefined;
+        this.#insertColumns = undefined;
+        this.#insertReturning = undefined;
+        this.#insertParams = undefined;
+        this.#selectTable = undefined;
+        this.#selectColumns = undefined;
+        this.#selectJoin = undefined;
+        this.#selectWhere = undefined;
+        this.#selectLogicalOperators = undefined;
+        this.#selectGroupBy = undefined;
+        this.#selectOrderBy = undefined;
+        this.#selectHaving = undefined;
+        this.#updateBeginTransaction = undefined;
+        this.#updateTable = undefined;
+        this.#updateColumns = undefined;
+        this.#updateWhere = undefined;
+        this.#updateLogicalOperators = undefined;
+        this.#updateReturning = undefined;
+    }
 
     Config (_config)
     {
@@ -63,7 +84,7 @@ class QueryTool
     }
 
     #SetClient = () => {
-        if (this.#method.toLowerCase() === "client")
+        if (this.#method === "client")
         {
             this.#client = new pg.Client({
                 ...this.#config
@@ -73,7 +94,7 @@ class QueryTool
             .then(() => console.log("Connected to database"))
             .catch((err) => console.log(err));
         }
-        else if (this.#method.toLowerCase() === "pool")
+        else if (this.#method === "pool")
         {
             this.#client = new pg.Pool({
                 ...this.#config
@@ -109,7 +130,7 @@ class QueryTool
     
     #Insert = (_insertParam) =>
     {
-        const validParameters = this.#validateParams(_insertParam);
+        const validParameters = this.#ValidateParameters(_insertParam);
 
         if (validParameters)
         {
@@ -120,6 +141,7 @@ class QueryTool
                     commit: false,
                     rollback: false,
                     params: false,
+                    connection: false,
                 },
                 data: false,
             };
@@ -149,7 +171,228 @@ class QueryTool
                 throw new Error ("The begin transaction must be a boolean");
             }
 
-            this.#table = table;
+            if (returning)
+            {
+                this.#insertReturning = returning.join(", ");
+            }
+
+            this.#insertTable = table;
+            const columnsNames = Object.keys(columns);
+            this.#insertColumns = columnsNames;
+
+            const params = [];
+            const values = [];
+
+            columnsNames.forEach( (_column, _index) =>
+            {
+                params.push(`$${_index + 1}`);
+                values.push(columns[_column]);
+            });
+
+            this.#insertParams = params.join(", ");
+
+            if (this.#method === "client")
+            {
+                if (beginTransaction)
+                {
+                    const result = this.#client
+                        .connect()
+                        .then( () => this.#client.query("BEGIN;"))
+                        .then( () => this.#client.query(`
+                            INSERT INTO ${this.#insertTable} (${this.#insertColumns})
+                             VALUES (${this.#insertParams})
+                             ${this.#insertReturning ? `RETURNING ${this.#insertReturning}` : "" }
+                        `, values))
+                        .then(async (result) =>
+                        {
+                            this.#insertResult.data = result.rows;
+
+                            await this.#client
+                                .query("COMMIT;")
+                                .then( () =>
+                                {
+                                    console.log("COMMIT SUCCESSFULLy");
+                                })
+                                .catch( (err) => {
+                                    this.#insertResult.error.commit = err.message;
+                                });
+
+                            return this.#insertResult;
+                        })
+                        .catch(async (err) =>
+                        {
+                            this.#insertResult.error.transaction = err.message;
+
+                            await this.#client
+                                .query("ROLLBACK;")
+                                .then( () =>
+                                {
+                                    console.log("ROLLBACK SUCCESSFULLy");
+                                })
+                                .catch( (err) => {
+                                    this.#insertResult.error.rollback = err.message;
+                                });
+
+                            return this.#insertResult;
+                        })
+                        .finnally( () =>
+                        {
+                            this.#client.end();
+                            this.#insertBeginTransaction = undefined;
+                            this.#insertTable = undefined;
+                            this.#insertColumns = undefined;
+                            this.#insertReturning = undefined;
+                            this.#insertParams = undefined;
+                        });
+
+                    return result;
+                }
+                else
+                {
+                    const result = this.#client
+                        .connect()
+                        .then( () => this.#client.query(`
+                            INSERT INTO ${this.#insertTable} (${this.#insertColumns})
+                            VALUES (${this.#insertParams})
+                            ${this.#insertReturning ? `RETURNING ${this.#insertReturning}` : "" }
+                        `, values))
+                        .then( (result) =>
+                        {
+                            this.#insertResult.data = result.rows;
+                            return this.#insertResult;
+                        })
+                        .catch( (err) =>
+                        {
+                            this.#insertResult.error.transaction = err.message;
+                            return this.#insertResult;
+                        })
+                        .finnally( () =>
+                        {
+                            this.#client.end();
+                            this.#insertBeginTransaction = undefined;
+                            this.#insertTable = undefined;
+                            this.#insertColumns = undefined;
+                            this.#insertReturning = undefined;
+                            this.#insertParams = undefined;
+                        });
+
+                    return result;
+                }
+            }
+            else
+            {
+                if (beginTransaction)
+                {
+                    const result = this.#client
+                        .connect()
+                        .then( (connection) => connection.query("BEGIN;")
+                            .then( () => connection.query(`
+                                INSERT INTO ${this.#insertTable} (${this.#insertColumns})
+                                VALUES (${this.#insertParams})
+                                ${this.#insertReturning ? `RETURNING ${this.#insertReturning}` : "" }
+                            `, values))
+                            .then(async (result) =>
+                            {
+                                this.#insertResult.data = result.rows;
+
+                                await connection
+                                    .query("COMMIT;")
+                                    .then( () =>
+                                    {
+                                        console.log("COMMIT SUCCESSFULLy");
+                                    })
+                                    .catch( (err) => {
+                                        this.#insertResult.error.commit = err.message;
+                                    });
+
+                                return this.#insertResult;
+                            })
+                            .catch(async (err) =>
+                            {
+                                this.#insertResult.error.transaction = err.message;
+
+                                await connection
+                                    .query("ROLLBACK;")
+                                    .then( () =>
+                                    {
+                                        console.log("ROLLBACK SUCCESSFULLy");
+                                    })
+                                    .catch( (err) => {
+                                        this.#insertResult.error.rollback = err.message;
+                                    });
+
+                                return this.#insertResult;
+                            })
+                            .finnally( () =>
+                            {
+                                connection.release();
+                                this.#insertBeginTransaction = undefined;
+                                this.#insertTable = undefined;
+                                this.#insertColumns = undefined;
+                                this.#insertReturning = undefined;
+                                this.#insertParams = undefined;
+                            })
+                        )
+                        .catch( (err) => {
+                            this.#insertResult.error.connection = err.message;
+                            return this.#insertResult;
+                        })
+                        .finnally( () =>
+                        {
+                            this.#insertBeginTransaction = undefined;
+                            this.#insertTable = undefined;
+                            this.#insertColumns = undefined;
+                            this.#insertReturning = undefined;
+                            this.#insertParams = undefined;
+                        })
+
+                    return result;
+                }
+                else
+                {
+                    const result = this.#client
+                        .connect()
+                        .then( (connection) => connection.query(`
+                                INSERT INTO ${this.#insertTable} (${this.#insertColumns})
+                                VALUES (${this.#insertParams})
+                                ${this.#insertReturning ? `RETURNING ${this.#insertReturning}` : "" }
+                            `, values)
+                            .then( (result) =>
+                            {
+                                this.#insertResult.data = result.rows;
+                                return this.#insertResult;
+                            })
+                            .catch( (err) =>
+                            {
+                                this.#insertResult.error.transaction = err.message;
+                                return this.#insertResult;
+                            })
+                            .finnally( () =>
+                            {
+                                connection.release();
+                                this.#insertBeginTransaction = undefined;
+                                this.#insertTable = undefined;
+                                this.#insertColumns = undefined;
+                                this.#insertReturning = undefined;
+                                this.#insertParams = undefined;
+                            })
+                        )
+                        .catch( (err) => {
+                            this.#insertResult.error.connection = err.message;
+                            return this.#insertResult;
+                        })
+                        .finnally( () =>
+                        {
+                            this.#insertBeginTransaction = undefined;
+                            this.#insertTable = undefined;
+                            this.#insertColumns = undefined;
+                            this.#insertReturning = undefined;
+                            this.#insertParams = undefined;
+                        })
+
+                    return result;
+                }
+            }
         }
     }
 
