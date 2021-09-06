@@ -33,7 +33,6 @@ class QueryTool
 
     constructor ()
     {
-        this.#insertBeginTransaction = undefined;
         this.#insertTable = undefined;
         this.#insertColumns = undefined;
         this.#insertReturning = undefined;
@@ -46,7 +45,6 @@ class QueryTool
         this.#selectGroupBy = undefined;
         this.#selectOrderBy = undefined;
         this.#selectHaving = undefined;
-        this.#updateBeginTransaction = undefined;
         this.#updateTable = undefined;
         this.#updateColumns = undefined;
         this.#updateWhere = undefined;
@@ -57,7 +55,6 @@ class QueryTool
     Config (_config)
     {
         this.#SetConfig(_config);
-        this.#SetClient();
     }
 
     #SetConfig = (_config) =>
@@ -74,12 +71,12 @@ class QueryTool
             }
             else
             {
-                throw new Error("You must provide a method to connect to the database");
+                throw new Error("You must provide a method to connect to the database. Choose between 'pool' or 'client'");
             }
         }
         else
         {
-            throw new Error ("The config must be a JSON specifying how do you want to connect to the database");
+            throw new Error ("The config must be a JSON specifying how do you want to connect to the database, such as 'pool' or 'client'");
         }
     }
 
@@ -89,20 +86,12 @@ class QueryTool
             this.#client = new pg.Client({
                 ...this.#config
             });
-
-            this.#client.connect()
-            .then(() => console.log("Connected to database"))
-            .catch((err) => console.log(err));
         }
         else if (this.#method === "pool")
         {
             this.#client = new pg.Pool({
                 ...this.#config
             });
-
-            this.#client.connect()
-            .then(() => console.log("Connected to database"))
-            .catch((err) => console.log(err));
         }
         else
         {
@@ -235,10 +224,9 @@ class QueryTool
 
                             return this.#insertResult;
                         })
-                        .finnally( () =>
+                        .finally( () =>
                         {
                             this.#client.end();
-                            this.#insertBeginTransaction = undefined;
                             this.#insertTable = undefined;
                             this.#insertColumns = undefined;
                             this.#insertReturning = undefined;
@@ -266,10 +254,9 @@ class QueryTool
                             this.#insertResult.error.transaction = err.message;
                             return this.#insertResult;
                         })
-                        .finnally( () =>
+                        .finally( () =>
                         {
                             this.#client.end();
-                            this.#insertBeginTransaction = undefined;
                             this.#insertTable = undefined;
                             this.#insertColumns = undefined;
                             this.#insertReturning = undefined;
@@ -323,10 +310,9 @@ class QueryTool
 
                                 return this.#insertResult;
                             })
-                            .finnally( () =>
+                            .finally( () =>
                             {
                                 connection.release();
-                                this.#insertBeginTransaction = undefined;
                                 this.#insertTable = undefined;
                                 this.#insertColumns = undefined;
                                 this.#insertReturning = undefined;
@@ -337,14 +323,13 @@ class QueryTool
                             this.#insertResult.error.connection = err.message;
                             return this.#insertResult;
                         })
-                        .finnally( () =>
+                        .finally( () =>
                         {
-                            this.#insertBeginTransaction = undefined;
                             this.#insertTable = undefined;
                             this.#insertColumns = undefined;
                             this.#insertReturning = undefined;
                             this.#insertParams = undefined;
-                        })
+                        });
 
                     return result;
                 }
@@ -367,10 +352,9 @@ class QueryTool
                                 this.#insertResult.error.transaction = err.message;
                                 return this.#insertResult;
                             })
-                            .finnally( () =>
+                            .finally( () =>
                             {
                                 connection.release();
-                                this.#insertBeginTransaction = undefined;
                                 this.#insertTable = undefined;
                                 this.#insertColumns = undefined;
                                 this.#insertReturning = undefined;
@@ -381,15 +365,13 @@ class QueryTool
                             this.#insertResult.error.connection = err.message;
                             return this.#insertResult;
                         })
-                        .finnally( () =>
+                        .finally( () =>
                         {
-                            this.#insertBeginTransaction = undefined;
                             this.#insertTable = undefined;
                             this.#insertColumns = undefined;
                             this.#insertReturning = undefined;
                             this.#insertParams = undefined;
-                        })
-
+                        });
                     return result;
                 }
             }
@@ -398,8 +380,7 @@ class QueryTool
 
     Insert(_insertParam)
     {
-        this.#SetClient();
-        this.#Insert(_insertParam);
+        return this.#Insert(_insertParam);
     }
 
 
