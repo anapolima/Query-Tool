@@ -7,6 +7,7 @@ class QueryTool
     #method
     #config
     #client
+    #connection
     #insertResult
     #selectResult
     #updateResult
@@ -43,7 +44,7 @@ class QueryTool
         this.#selectGroupBy = undefined;
         this.#selectOrderBy = undefined;
         this.#selectHaving = undefined;
-        
+
         this.#updateTable = undefined;
         this.#updateParams = undefined;
         this.#updateWhere = undefined;
@@ -1399,6 +1400,110 @@ class QueryTool
     Update (_updateParam)
     {
         return this.#Update(_updateParam);
+    }
+
+    #BeginTransaction = () =>
+    {
+        if (this.#method === "client")
+        {
+            this.#client
+            .connect()
+            .then( () => this.#client.query("BEGIN;"))
+            .then( () => console.log("TRANSACTION STARTED"))
+            .catch( (err) => console.log(err.message));
+        }
+        else
+        {
+            this.#client
+            .connect()
+            .then( (connection) => connection.query("BEGIN;")
+                .then( () => {
+                    console.log("TRANSACTION STARTED")
+                    this.#connection = connection;
+                })
+                .catch( (err) => console.log(err.message))
+            )
+            .catch( (err) => console.log(err.message));
+        }
+    }
+
+    BeginTransaction ()
+    {
+        this.#BeginTransaction();
+    }
+
+    #Commit = () =>
+    {
+        if (this.#method === "client")
+        {
+            this.#client
+                .then( () => 
+                {
+                    this.#client.query("COMMIT;");
+                })
+                .then( () =>
+                {
+                    console.log("COMMIT SUCCESSFULLY");
+                })
+                .catch( (err) => console.log(err.message))
+                .finally( () => this.#client.end());
+        }
+        else
+        {
+            this.#connection
+            .then( () => 
+            {
+                this.#connection.query("COMMIT;");
+            })
+            .then( () =>
+            {
+                console.log("COMMIT SUCCESSFULLY");
+            })
+            .catch( (err) => console.log(err.message))
+            .finally( () => this.#connection.release());
+        }
+    }
+
+    Commit ()
+    {
+        this.#Commit();
+    }
+
+    #Rollback = () =>
+    {
+        if (this.#method === "client")
+        {
+            this.#client
+                .then( () => 
+                {
+                    this.#client.query("ROLLBACK;");
+                })
+                .then( () =>
+                {
+                    console.log("ROLLBACK SUCCESSFULLY");
+                })
+                .catch( (err) => console.log(err.message))
+                .finally( () => this.#client.end());
+        }
+        else
+        {
+            this.#connection
+            .then( () => 
+            {
+                this.#connection.query("ROLLBACK;");
+            })
+            .then( () =>
+            {
+                console.log("ROLLBACK SUCCESSFULLY");
+            })
+            .catch( (err) => console.log(err.message))
+            .finally( () => this.#connection.release());
+        }
+    }
+
+    Rollback ()
+    {
+        this.#Rollback();
     }
 }
 
