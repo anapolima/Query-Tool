@@ -25,9 +25,8 @@ class QueryTool
     #selectHaving
 
     #updateTable
-    #updateColumns
+    #updateParams
     #updateWhere
-    #updateLogicalOperators
     #updateReturning
 
     constructor ()
@@ -36,6 +35,7 @@ class QueryTool
         this.#insertColumns = undefined;
         this.#insertReturning = undefined;
         this.#insertParams = undefined;
+
         this.#selectTable = undefined;
         this.#selectColumns = undefined;
         this.#selectJoin = undefined;
@@ -43,10 +43,10 @@ class QueryTool
         this.#selectGroupBy = undefined;
         this.#selectOrderBy = undefined;
         this.#selectHaving = undefined;
+        
         this.#updateTable = undefined;
-        this.#updateColumns = undefined;
+        this.#updateParams = undefined;
         this.#updateWhere = undefined;
-        this.#updateLogicalOperators = undefined;
         this.#updateReturning = undefined;
     }
 
@@ -206,7 +206,7 @@ class QueryTool
                                 .query("COMMIT;")
                                 .then( () =>
                                 {
-                                    console.log("COMMIT SUCCESSFULLy");
+                                    console.log("COMMIT SUCCESSFULLY");
                                 })
                                 .catch( (err) => {
                                     this.#insertResult.error.commit = err.message;
@@ -222,7 +222,7 @@ class QueryTool
                                 .query("ROLLBACK;")
                                 .then( () =>
                                 {
-                                    console.log("ROLLBACK SUCCESSFULLy");
+                                    console.log("ROLLBACK SUCCESSFULLY");
                                 })
                                 .catch( (err) => {
                                     this.#insertResult.error.rollback = err.message;
@@ -292,7 +292,7 @@ class QueryTool
                                     .query("COMMIT;")
                                     .then( () =>
                                     {
-                                        console.log("COMMIT SUCCESSFULLy");
+                                        console.log("COMMIT SUCCESSFULLY");
                                     })
                                     .catch( (err) => {
                                         this.#insertResult.error.commit = err.message;
@@ -308,7 +308,7 @@ class QueryTool
                                     .query("ROLLBACK;")
                                     .then( () =>
                                     {
-                                        console.log("ROLLBACK SUCCESSFULLy");
+                                        console.log("ROLLBACK SUCCESSFULLY");
                                     })
                                     .catch( (err) => {
                                         this.#insertResult.error.rollback = err.message;
@@ -956,6 +956,449 @@ class QueryTool
     Select (_selectParam)
     {
         return this.#Select(_selectParam);
+    }
+
+    #Update = (_updateParam) =>
+    {
+        const validParameters = this.#ValidateParameters(_updateParam);
+
+        if (validParameters)
+        {
+            this.#SetClient();
+            this.#updateResult = {
+                error: {
+                    transaction: false,
+                    commit: false,
+                    rollback: false,
+                    params: false,
+                    connection: false,
+                },
+                data: false,
+            };
+
+            const beginTransaction = _updateParam.beginTransaction;
+            const table = _updateParam.table;
+            const columns = _updateParam.columns;
+            const where = _updateParam.where;
+            const logicalOperators = _updateParam.logicalOperators;
+            const returning = _updateParam.returning;
+
+            if (typeof (table) !== "string")
+            {
+                throw new Error ("The 'table' must be a string");
+            }
+
+            if ( !( columns instanceof Object && !(columns instanceof Array) ))
+            {
+                throw new Error ("Columns need to be a JSON. Each key must be the name of a column in the databese and its value must be the value to be inserted");
+            }
+            
+            if ( where && !( where instanceof Object && !(where instanceof Array) ))
+            {
+                throw new Error ("The 'where' must be a JSON, each key must be the name of a column and also a JSON with the keys 'operator' and 'value'");
+            }
+            
+            if ( logicalOperators && !( Array.isArray(logicalOperators) ))
+            {
+                throw new Error ("The 'logical operators' must be an array");
+            }
+
+            if ( returning && !( Array.isArray(returning) ) )
+            {
+                throw new Error ("The returning must be an array containing the name of the columns to be returned");
+            }
+
+            if (typeof (beginTransaction) !== "boolean")
+            {
+                throw new Error ("The begin transaction must be a boolean");
+            }
+
+            this.#updateTable = table;
+            const columnsNames = Object.keys(columns);
+
+            const updateParams = [];
+            const values = [];
+            let param = 1;
+
+            columnsNames.forEach( (_column) =>
+            {
+                const value = columns[_column].value;
+                const type = columns[_column].type;
+
+                if (isNaN(value))
+                {
+                    if (type)
+                    {
+                        const regexType = /integer$|string$/;
+
+                        if (regexType.test(type))
+                        {
+                            if (type.toLowerCase() === "integer")
+                            {
+                                updateParams.push(`${_column} = ${value}`);
+                            }
+                            else
+                            {
+                                updateParams.push(`${_column} = $${param}`);
+                                values.push(value);
+                                param++;
+                            }
+                        }
+                        else
+                        {
+                            this.#updateResult.error.params = "Invalid type. Type must be 'integer' or 'string'";
+                        }
+                    }
+                    else
+                    {
+                        this.#updateResult.error.params = "When providing values as a string you need to specify its type. You can do that by adding a key 'type' with a value of 'string' or 'integer'";
+                    }
+                }
+                else
+                {
+                    updateParams.push(`${_column} = $${param}`);
+                    values.push(value);
+                    param++;
+                }
+            });
+
+            if (this.#updateResult.error.params)
+            {
+                return this.#updateResult;
+            }
+
+            this.#updateParams = updateParams.join(", ");
+
+            if (where)
+            {
+                const updateWhere = [];
+                const whereColumns = Object.keys(where);
+
+                if ( !logicalOperators)
+                {
+                    throw new Error ("When using the WHERE clause, you must provide the logical operators");
+                }
+
+                whereColumns.forEach( (_column, _index) =>
+                {
+                    const regexOperator = /=$|>$|<$|between$|like$|ilike$|is$|in$/i;
+                    const regexCompoundOperator = /!=$|>=$|<=$|not between$|not like$|not ilike$|is not$|not in$/i;
+    
+                    const operator = where[_column].operator.toLowerCase();
+                    const value = where[_column].value;
+    
+                    let isValidOperator = false;
+    
+                    if ( (operator.length === 2 || operator.split(" ").length > 1) && operator !== "in" && operator !== "is") 
+                    {
+                        isValidOperator = regexCompoundOperator.test(operator);
+                    }
+                    else
+                    {
+                        isValidOperator = regexOperator.test(operator);
+                    }
+    
+                    if (isValidOperator)
+                    {
+                        if (operator === "like" || operator === "not like"
+                            || operator === "ilike" || operator === "not ilike")
+                        {
+                            updateWhere.push(`
+                                ${_column} ${operator.toUpperCase()} '%'||$${param}||'%'
+                                 ${   logicalOperators[_index]
+                                    ? logicalOperators[_index].toUpperCase()
+                                    : "" }
+                            `);
+                            param++;
+                            values.push(value);
+                        }
+                        else if (operator === "between" || operator === "not between")
+                        {
+                            updateWhere.push(`
+                                ${_column} ${operator.toUpperCase()}
+                                 $${param} AND $${param + 1}
+                                 ${   logicalOperators[_index]
+                                    ? logicalOperators[_index].toUpperCase()
+                                    : "" }
+                            `);
+                            param += 2;
+                            values.push(value[0], value[1]);
+                        }
+                        else if (operator === "is" || operator === "is not")
+                        {
+                            updateWhere.push(`
+                                ${_column} ${operator.toUpperCase()}
+                                 ${param}
+                                 ${   logicalOperators[_index]
+                                    ? logicalOperators[_index].toUpperCase()
+                                    : "" }
+                            `);
+                            param++;
+                            values.push(value);
+                        }
+                        else if (operator === "in" || operator === "not in")
+                        {
+                            let inValues = undefined;
+    
+                            value.forEach( (_inValue, _inIndex) => 
+                            {
+                                if (_inIndex === 0)
+                                {
+                                    inValues = `($${param}`;
+                                    param++;
+                                    values.push(value[_inIndex]);
+                                }
+                                else
+                                {
+                                    inValues += `, $${param})`;
+                                    param++;
+                                    values.push(value[_inIndex]);
+                                }
+    
+                                if (_inIndex === value.length - 1)
+                                {
+                                    inValues += ")";
+                                }
+                            });
+    
+                            updateWhere.push(`
+                                ${_column} ${operator.toUpperCase()}
+                                 ${inValues}
+                                 ${   logicalOperators[_index]
+                                    ? logicalOperators[_index].toUpperCase()
+                                    : "" }
+                            `);
+                        }
+                        else
+                        {
+                            updateWhere.push(`
+                            ${_column} ${operator.toUpperCase()} $${param}
+                             ${   logicalOperators[_index]
+                                ? logicalOperators[_index].toUpperCase()
+                                : "" }
+                            `);
+                            param++;
+                            values.push(value);
+                        }
+                    }
+                    else
+                    {
+                        this.#updateResult.error.params = "Invalid operator on WHERE params";
+                        return this.#selectResult;
+                    }
+                });
+    
+                this.#updateWhere = updateWhere.join (" ");
+            }
+
+            if (returning)
+            {
+                this.#updateReturning = returning.join(", ");
+            }
+
+            if (this.#method === "client")
+            {
+                if (beginTransaction)
+                {
+                    const result = this.#client
+                        .connect()
+                        .then( () => this.#client.query("BEGIN;"))
+                        .then( () => this.#client.query(`
+                            UPDATE ${this.#updateTable} SET ${this.#updateParams}
+                             ${this.#updateWhere ? `WHERE ${this.#updateWhere}` : ""}
+                             ${this.#updateReturning ? `RETURNING ${this.#updateReturning}` : "" }
+                        `, values))
+                        .then(async (result) =>
+                        {
+                            this.#updateResult.data = result.rows;
+
+                            await this.#client
+                                .query("COMMIT;")
+                                .then( () =>
+                                {
+                                    console.log("COMMIT SUCCESSFULLY");
+                                })
+                                .catch( (err) => {
+                                    this.#updateResult.error.commit = err.message;
+                                });
+
+                            return this.#updateResult;
+                        })
+                        .catch(async (err) =>
+                        {
+                            this.#updateResult.error.transaction = err.message;
+
+                            await this.#client
+                                .query("ROLLBACK;")
+                                .then( () =>
+                                {
+                                    console.log("ROLLBACK SUCCESSFULLY");
+                                })
+                                .catch( (err) => {
+                                    this.#updateResult.error.rollback = err.message;
+                                });
+
+                            return this.#updateResult;
+                        })
+                        .finally( () =>
+                        {
+                            this.#client.end();
+                            this.#updateTable = undefined;
+                            this.#updateParams = undefined;
+                            this.#updateWhere = undefined;
+                            this.#updateReturning = undefined;
+                        });
+
+                    return result;
+                }
+                else
+                {
+                    const result = this.#client
+                        .connect()
+                        .then( () => this.#client.query(`
+                            UPDATE ${this.#updateTable} SET ${this.#updateParams}
+                             ${this.#updateWhere ? `WHERE ${this.#updateWhere}` : ""}
+                             ${this.#updateReturning ? `RETURNING ${this.#updateReturning}` : "" }
+                        `, values))
+                        .then( (result) =>
+                        {
+                            this.#updateResult.data = result.rows;
+                            return this.#updateResult;
+                        })
+                        .catch( (err) =>
+                        {
+                            this.#updateResult.error.transaction = err.message;
+                            return this.#updateResult;
+                        })
+                        .finally( () =>
+                        {
+                            this.#client.end();
+                            this.#updateTable = undefined;
+                            this.#updateParams = undefined;
+                            this.#updateWhere = undefined;
+                            this.#updateReturning = undefined;
+                        });
+
+                    return result;
+                }
+            }
+            else
+            {
+                if (beginTransaction)
+                {
+                    const result = this.#client
+                        .connect()
+                        .then( (connection) => connection.query("BEGIN;")
+                            .then( () => connection.query(`
+                                UPDATE ${this.#updateTable} SET ${this.#updateParams}
+                                ${this.#updateWhere ? `WHERE ${this.#updateWhere}` : ""}
+                                ${this.#updateReturning ? `RETURNING ${this.#updateReturning}` : "" }
+                            `, values))
+                            .then(async (result) =>
+                            {
+                                this.#updateResult.data = result.rows;
+
+                                await connection
+                                    .query("COMMIT;")
+                                    .then( () =>
+                                    {
+                                        console.log("COMMIT SUCCESSFULLY");
+                                    })
+                                    .catch( (err) => {
+                                        this.#updateResult.error.commit = err.message;
+                                    });
+
+                                return this.#updateResult;
+                            })
+                            .catch(async (err) =>
+                            {
+                                this.#updateResult.error.transaction = err.message;
+
+                                await connection
+                                    .query("ROLLBACK;")
+                                    .then( () =>
+                                    {
+                                        console.log("ROLLBACK SUCCESSFULLY");
+                                    })
+                                    .catch( (err) => {
+                                        this.#updateResult.error.rollback = err.message;
+                                    });
+
+                                return this.#updateResult;
+                            })
+                            .finally( () =>
+                            {
+                                connection.release();
+                                this.#updateTable = undefined;
+                                this.#updateParams = undefined;
+                                this.#updateWhere = undefined;
+                                this.#updateReturning = undefined;
+                            }))
+                        .catch( (err) =>
+                        {
+                            this.#updateResult.error.connection = err.message;
+                            return this.#updateResult;
+                        })
+                        .finnaly( () =>
+                        {
+                            this.#updateTable = undefined;
+                            this.#updateParams = undefined;
+                            this.#updateWhere = undefined;
+                            this.#updateReturning = undefined;
+                        });
+
+                    return result;
+                }
+                else
+                {
+                    const result = this.#client
+                        .connect()
+                        .then( (connection) => connection.query("BEGIN;")
+                            .then( () => connection.query(`
+                                UPDATE ${this.#updateTable} SET ${this.#updateParams}
+                                ${this.#updateWhere ? `WHERE ${this.#updateWhere}` : ""}
+                                ${this.#updateReturning ? `RETURNING ${this.#updateReturning}` : "" }
+                            `, values))
+                            .then( (result) =>
+                            {
+                                this.#updateResult.data = result.rows;
+                                return this.#updateResult;
+                            })
+                            .catch( (err) =>
+                            {
+                                this.#updateResult.error.transaction = err.message;
+                                return this.#updateResult;
+                            })
+                            .finally( () =>
+                            {
+                                connection.release();
+                                this.#updateTable = undefined;
+                                this.#updateParams = undefined;
+                                this.#updateWhere = undefined;
+                                this.#updateReturning = undefined;
+                            }))
+                        .catch( (err) =>
+                        {
+                            this.#updateResult.error.connection = err.message;
+                            return this.#updateResult;
+                        })
+                        .finnaly( () =>
+                        {
+                            this.#updateTable = undefined;
+                            this.#updateParams = undefined;
+                            this.#updateWhere = undefined;
+                            this.#updateReturning = undefined;
+                        });
+
+                    return result;
+                }
+            }
+        }
+    }
+
+    Update (_updateParam)
+    {
+        return this.#Update(_updateParam);
     }
 }
 
