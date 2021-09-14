@@ -31,6 +31,11 @@ class QueryTool
     #updateWhere
     #updateReturning
 
+    #deleteTable
+    #deleteUsing
+    #deleteWhere
+    #deleteReturning
+
     constructor ()
     {
         this.#method = undefined;
@@ -60,6 +65,11 @@ class QueryTool
         this.#updateParams = undefined;
         this.#updateWhere = undefined;
         this.#updateReturning = undefined;
+
+        this.#deleteTable = undefined;
+        this.#deleteUsing = undefined;
+        this.#deleteWhere = undefined;
+        this.#deleteReturning = undefined;
     }
 
     Config (_config)
@@ -1065,6 +1075,304 @@ class QueryTool
     Update (_updateParam)
     {
         return this.#Update(_updateParam);
+    }
+
+    #Delete = (_deleteParam) =>
+    {
+        const validParameters = this.#ValidateParameters({ ..._deleteParam });
+
+        if (validParameters)
+        {
+            this.#deleteResult = {
+                error: {
+                    transaction: false,
+                    commit: false,
+                    rollback: false,
+                    params: false,
+                },
+                success: {
+                    commit: false,
+                    rollback: false,
+                },
+                data: false,
+            };
+
+            const beginTransaction = _deleteParam.beginTransaction;
+            const table = _deleteParam.table;
+            const using = _deleteParam.using;
+            const where = _deleteParam.where;
+            const logicalOperators = _deleteParam.logicalOperators;
+            const returning = _deleteParam.returning;
+
+            if (typeof (table) !== "string")
+            {
+                throw new Error ("The 'table' must be a string");
+            }
+
+            if ( using && typeof (using) !== "string")
+            {
+                throw new Error ("The 'using' must be a string");
+            }
+            
+            if ( where && !( where instanceof Object && !(where instanceof Array) ))
+            {
+                throw new Error ("The 'where' must be a JSON, each key must be the name of a column and also a JSON with the keys 'operator' and 'value'");
+            }
+            
+            if ( logicalOperators && !( Array.isArray(logicalOperators) ))
+            {
+                throw new Error ("The 'logical operators' must be an array");
+            }
+
+            if ( returning && !( Array.isArray(returning) ) )
+            {
+                throw new Error ("The returning must be an array containing the name of the columns to be returned");
+            }
+
+            if (typeof (beginTransaction) !== "boolean")
+            {
+                throw new Error ("The begin transaction must be a boolean");
+            }
+
+            this.#deleteTable = table;
+            const values = [];
+            let param = 1;
+
+            if (using)
+            {
+                this.#deleteUsing = using;
+            }
+
+            if (where)
+            {
+                const deleteWhere = [];
+                const whereColumns = Object.keys(where);
+
+                if ( !logicalOperators)
+                {
+                    throw new Error ("When using the WHERE clause, you must provide the logical operators");
+                }
+
+                const validOperators = this.#ValidateOperators(where, whereColumns, logicalOperators, deleteWhere, values, param, this.#deleteResult);
+
+                if (validOperators)
+                {
+                    this.#deleteWhere = deleteWhere.join (" ");
+                    param = validOperators;
+                }
+                else
+                {
+                    return this.#deleteResult;
+                }
+    
+            }
+
+            if (returning)
+            {
+                this.#deleteReturning = returning.join(", ");
+            }
+
+            if (this.#method === "client")
+            {
+                if (beginTransaction)
+                {
+                    const result = this.#client
+                        .query("BEGIN;")
+                        .then( () => this.#client.query(`
+                            DELETE FROM ${this.#deleteTable}
+                             ${this.#deleteUsing ? `USING ${this.#deleteUsing}` : ""}
+                             ${this.#deleteWhere ? `WHERE ${this.#deleteWhere}` : ""}
+                             ${this.#deleteReturning ? `RETURNING ${this.#deleteReturning}` : ""}
+                        `, values))
+                        .then(async (result) =>
+                        {
+                            this.#deleteResult.data = result.rows;
+
+                            await this.#client
+                                .query("COMMIT;")
+                                .then( () =>
+                                {
+                                    this.#deleteResult.success.commit = true;
+                                })
+                                .catch( (err) =>
+                                {
+                                    this.#deleteResult.error.commit = err.message;
+                                });
+
+                            return this.#deleteResult;
+                        })
+                        .catch(async (err) =>
+                        {
+                            this.#deleteResult.error.transaction = err.message;
+
+                            await this.#client
+                                .query("ROLLBACK;")
+                                .then( () =>
+                                {
+                                    this.#deleteResult.success.rollback = true;
+                                })
+                                .catch( (err) =>
+                                {
+                                    this.#deleteResult.error.rollback = err.message;
+                                });
+
+                            return this.#deleteResult;
+                        })
+                        .finally( () =>
+                        {
+                            this.#deleteTable = undefined;
+                            this.#deleteUsing = undefined;
+                            this.#deleteWhere = undefined;
+                            this.#deleteReturning = undefined;
+                        });
+
+                    return result;
+                }
+                else
+                {
+                    const result = this.#client
+                        .query(`
+                            DELETE FROM ${this.#deleteTable}
+                             ${this.#deleteUsing ? `USING ${this.#deleteUsing}` : ""}
+                             ${this.#deleteWhere ? `WHERE ${this.#deleteWhere}` : ""}
+                             ${this.#deleteReturning ? `RETURNING ${this.#deleteReturning}` : ""}
+                        `, values)
+                        .then( (result) =>
+                        {
+                            this.#deleteResult.data = result.rows;
+                            return this.#deleteResult;
+                        })
+                        .catch( (err) =>
+                        {
+                            this.#deleteResult.error.transaction = err.message;
+                            return this.#deleteResult;
+                        })
+                        .finally( () =>
+                        {
+                            this.#deleteTable = undefined;
+                            this.#deleteUsing = undefined;
+                            this.#deleteWhere = undefined;
+                            this.#deleteReturning = undefined;
+                        });
+
+                    return result;
+                }
+            }
+            else
+            {
+                if (beginTransaction)
+                {
+                    const result = this.#connection
+                        .query("BEGIN;")
+                        .then( () => this.#connection.query(`
+                            DELETE FROM ${this.#deleteTable}
+                             ${this.#deleteUsing ? `USING ${this.#deleteUsing}` : ""}
+                             ${this.#deleteWhere ? `WHERE ${this.#deleteWhere}` : ""}
+                             ${this.#deleteReturning ? `RETURNING ${this.#deleteReturning}` : ""}
+                        `, values))
+                        .then(async (result) =>
+                        {
+                            this.#deleteResult.data = result.rows;
+
+                            await this.#connection
+                                .query("COMMIT;")
+                                .then( () =>
+                                {
+                                    this.#deleteResult.success.commit = true;
+                                })
+                                .catch( (err) =>
+                                {
+                                    this.#deleteResult.error.commit = err.message;
+                                });
+
+                            return this.#deleteResult;
+                        })
+                        .catch(async (err) =>
+                        {
+                            this.#deleteResult.error.transaction = err.message;
+
+                            await this.#connection
+                                .query("ROLLBACK;")
+                                .then( () =>
+                                {
+                                    this.#deleteResult.success.rollback = true;
+                                })
+                                .catch( (err) =>
+                                {
+                                    this.#deleteResult.error.rollback = err.message;
+                                });
+
+                            return this.#deleteResult;
+                        })
+                        .finally( () =>
+                        {
+                            try
+                            {
+                                this.#connection.release();
+                                this.#deleteTable = undefined;
+                                this.#deleteUsing = undefined;
+                                this.#deleteWhere = undefined;
+                                this.#deleteReturning = undefined;
+                            }
+                            catch
+                            {
+                                this.#deleteTable = undefined;
+                                this.#deleteUsing = undefined;
+                                this.#deleteWhere = undefined;
+                                this.#deleteReturning = undefined;
+                            }
+                        });
+
+                    return result;
+                }
+                else
+                {
+                    const result = this.#connection
+                        .query(`
+                            DELETE FROM ${this.#deleteTable}
+                             ${this.#deleteUsing ? `USING ${this.#deleteUsing}` : ""}
+                             ${this.#deleteWhere ? `WHERE ${this.#deleteWhere}` : ""}
+                             ${this.#deleteReturning ? `RETURNING ${this.#deleteReturning}` : ""}
+                        `, values)
+                        .then( (result) =>
+                        {
+                            this.#deleteResult.data = result.rows;
+                            return this.#deleteResult;
+                        })
+                        .catch( (err) =>
+                        {
+                            this.#deleteResult.error.transaction = err.message;
+                            return this.#deleteResult;
+                        })
+                        .finally( () =>
+                        {
+                            try
+                            {
+                                this.#connection.release();
+                                this.#deleteTable = undefined;
+                                this.#deleteUsing = undefined;
+                                this.#deleteWhere = undefined;
+                                this.#deleteReturning = undefined;    
+                            }
+                            catch
+                            {
+                                this.#deleteTable = undefined;
+                                this.#deleteUsing = undefined;
+                                this.#deleteWhere = undefined;
+                                this.#deleteReturning = undefined;    
+                            }
+                        });
+
+                    return result;
+                }
+            }
+
+        }
+    }
+
+    Delete (_deleteParam)
+    {
+        return this.#Delete(_deleteParam)
     }
 
     #BeginTransaction = () =>
