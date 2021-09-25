@@ -1702,27 +1702,65 @@ class QueryTool
                 if (operator === "like" || operator === "not like"
                     || operator === "ilike" || operator === "not ilike")
                 {
-                    if (_join)
+                    const percent = _object[_column].percent;
+                    if (percent)
                     {
-                        _arrayParams.push(`
-                            ${_join}.${_column} ${operator.toUpperCase()} '%'||$${_paramNumber}||'%'
-                                ${   _logicalOperators[_index]
-                                ? _logicalOperators[_index].toUpperCase()
-                                : "" }
-                        `);
-                        _paramNumber++;
-                        _arrayValues.push(value);
+                        const validPercent = this.#ValidateLIKEpercent(_object[_column], _paramNumber);
+
+                        if (validPercent)
+                        {
+                            if (_join)
+                            {
+                                _arrayParams.push(`
+                                    ${_join}.${_column} ${operator.toUpperCase()} ${validPercent}
+                                        ${   _logicalOperators[_index]
+                                        ? _logicalOperators[_index].toUpperCase()
+                                        : "" }
+                                `);
+                                _paramNumber++;
+                                _arrayValues.push(value);
+                            }
+                            else
+                            {
+                                _arrayParams.push(`
+                                    ${_column} ${operator.toUpperCase()} ${validPercent}
+                                        ${   _logicalOperators[_index]
+                                        ? _logicalOperators[_index].toUpperCase()
+                                        : "" }
+                                `);
+                                _paramNumber++;
+                                _arrayValues.push(value);
+                            }
+                        }
+                        else
+                        {
+                            _errorsObject.error.params = "Invalid value for 'percent'. You must choose between 'start', 'end', and 'both'";
+                        }
                     }
                     else
                     {
-                        _arrayParams.push(`
-                            ${_column} ${operator.toUpperCase()} '%'||$${_paramNumber}||'%'
-                                ${   _logicalOperators[_index]
-                                ? _logicalOperators[_index].toUpperCase()
-                                : "" }
-                        `);
-                        _paramNumber++;
-                        _arrayValues.push(value);
+                        if (_join)
+                        {
+                            _arrayParams.push(`
+                                ${_join}.${_column} ${operator.toUpperCase()} $${_paramNumber}
+                                    ${   _logicalOperators[_index]
+                                    ? _logicalOperators[_index].toUpperCase()
+                                    : "" }
+                            `);
+                            _paramNumber++;
+                            _arrayValues.push(value);
+                        }
+                        else
+                        {
+                            _arrayParams.push(`
+                                ${_column} ${operator.toUpperCase()} $${_paramNumber}
+                                    ${   _logicalOperators[_index]
+                                    ? _logicalOperators[_index].toUpperCase()
+                                    : "" }
+                            `);
+                            _paramNumber++;
+                            _arrayValues.push(value);
+                        }
                     }
                 }
                 else if (operator === "between" || operator === "not between")
@@ -1884,6 +1922,29 @@ class QueryTool
         else
         {
             return _paramNumber;
+        }
+    }
+
+    #ValidateLIKEpercent = (_parameter, _paramNumber) =>
+    {
+        const parameter = { ..._parameter };
+        const percent = parameter.percent.toLowerCase();
+
+        if (percent === "start")
+        {
+            return `'%'||$${_paramNumber}`;
+        }
+        else if (percent === "end")
+        {
+            return `$${_paramNumber}||'%'`;
+        }
+        else if (percent === "both")
+        {
+            return `'%'||$${_paramNumber}||'%'`;
+        }
+        else
+        {
+           return undefined;
         }
     }
 }
