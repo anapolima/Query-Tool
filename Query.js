@@ -1,5 +1,4 @@
 const pg = require("pg");
-import pg from ("pg");
 
 class QueryTool 
 {
@@ -487,7 +486,7 @@ class QueryTool
             const table = _selectParam.table;
             const columns = _selectParam.columns;
             const where = _selectParam.where;
-            const logicalOperators = _selectParam.logicalOperators;
+            const logicalOperators = _selectParam.logicalOperators || [];
             const join = _selectParam.join;
             const groupBy = _selectParam.groupBy;
             const orderBy = _selectParam.orderBy;
@@ -565,7 +564,7 @@ class QueryTool
                     {
                         const joinOn = { ...join[_table].on };
                         const joinOnColumns = Object.keys(joinOn);
-                        const joinLogicalOperators = [ ...join[_table].logicalOperators ];
+                        const joinLogicalOperators = join[_table].logicalOperators ? [ ...join[_table].logicalOperators ] : [];
 
                         joinParams.push(`
                             ${tableJoin.toUpperCase()} ${_table} ON
@@ -630,7 +629,7 @@ class QueryTool
             {
                 const havingColumns = Object.keys(having.columns);
                 const havingParams = [];
-                const havingLogicalOperators = [ ...having.logicalOperators ];
+                const havingLogicalOperators = having.logicalOperators ? [ ...having.logicalOperators ] : [];
 
                 const validOperators = this.#ValidateOperators(having.columns, havingColumns, havingLogicalOperators, havingParams, values, param, this.#selectResult);
 
@@ -675,7 +674,6 @@ class QueryTool
                         this.#selectGroupBy = undefined;
                         this.#selectOrderBy = undefined;
                         this.#selectHaving = undefined;
-                        
                     });
                 
                 return result;
@@ -760,7 +758,7 @@ class QueryTool
             const table = _updateParam.table;
             const columns = _updateParam.columns;
             const where = _updateParam.where;
-            const logicalOperators = _updateParam.logicalOperators;
+            const logicalOperators = _updateParam.logicalOperators || [];
             const returning = _updateParam.returning;
 
             if (typeof (table) !== "string")
@@ -870,7 +868,6 @@ class QueryTool
                 {
                     return this.#updateResult;
                 }
-    
             }
 
             if (returning)
@@ -1023,7 +1020,6 @@ class QueryTool
                                 this.#updateParams = undefined;
                                 this.#updateWhere = undefined;
                                 this.#updateReturning = undefined;
-
                             }
                         });
 
@@ -1101,7 +1097,7 @@ class QueryTool
             const table = _deleteParam.table;
             const using = _deleteParam.using;
             const where = _deleteParam.where;
-            const logicalOperators = _deleteParam.logicalOperators;
+            const logicalOperators = _deleteParam.logicalOperators || [];
             const returning = _deleteParam.returning;
 
             if (typeof (table) !== "string")
@@ -1950,4 +1946,4 @@ class QueryTool
 }
 
 module.exports = QueryTool;
-export default QueryTool;
+module.exports.default = QueryTool;
