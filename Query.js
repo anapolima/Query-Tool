@@ -11,6 +11,7 @@ class QueryTool
     #insertResult
     #selectResult
     #updateResult
+    #deleteResult
 
     #insertTable
     #insertColumns
@@ -1946,4 +1947,3 @@ class QueryTool
 }
 
 module.exports = QueryTool;
-module.exports.default = QueryTool;
