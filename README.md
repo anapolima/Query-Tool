@@ -3,6 +3,13 @@ The QueryTool is a library that allows easier and faster connections with Postgr
 
 [Click here](https://github.com/anapolima/Query-Tool/wiki) to check our documentation.
 
+## Installing
+You can install this package by running
+```
+$ npm i query-tool
+```
+
+
 ## Support
 QueryTool is free software. If you encounter a bug with the library please open an issue on the GitHub repo. If you have questions unanswered by the documentation please open an issue pointing out how the documentation was unclear and I will do my best to make it better!
 
