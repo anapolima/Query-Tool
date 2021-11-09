@@ -36,23 +36,19 @@ function ValidateOperators (_object, _objectKeys, _logicalOperators, _arrayParam
                     {
                         if (_join)
                         {
-                            _arrayParams.push(`
-                                ${_join}.${_column} ${operator.toUpperCase()} ${validPercent} ${   _logicalOperators[_index]
-    ? _logicalOperators[_index].toUpperCase()
-    : ""
-}
-                            `);
+                            _arrayParams.push(
+                                `${_join}.${_column} ${operator.toUpperCase()} ${validPercent} 
+                                ${ _logicalOperators[_index] ? _logicalOperators[_index].toUpperCase() : "" }`
+                            );
                             _paramNumber++;
                             _arrayValues.push(value);
                         }
                         else
                         {
-                            _arrayParams.push(`
-                                ${_column} ${operator.toUpperCase()} ${validPercent}
-                                    ${   _logicalOperators[_index]
-        ? _logicalOperators[_index].toUpperCase()
-        : "" }
-                            `);
+                            _arrayParams.push(
+                                `${_column} ${operator.toUpperCase()} ${validPercent}
+                                 ${ _logicalOperators[_index] ? _logicalOperators[_index].toUpperCase() : ""  }`
+                            );
                             _paramNumber++;
                             _arrayValues.push(value);
                         }
@@ -66,23 +62,19 @@ function ValidateOperators (_object, _objectKeys, _logicalOperators, _arrayParam
                 {
                     if (_join)
                     {
-                        _arrayParams.push(`
-                            ${_join}.${_column} ${operator.toUpperCase()} $${_paramNumber}
-                                ${   _logicalOperators[_index]
-        ? _logicalOperators[_index].toUpperCase()
-        : "" }
-                        `);
+                        _arrayParams.push(
+                            `${_join}.${_column} ${operator.toUpperCase()} $${_paramNumber}
+                             ${ _logicalOperators[_index] ? _logicalOperators[_index].toUpperCase() : "" }`
+                        );
                         _paramNumber++;
                         _arrayValues.push(value);
                     }
                     else
                     {
-                        _arrayParams.push(`
-                            ${_column} ${operator.toUpperCase()} $${_paramNumber}
-                                ${   _logicalOperators[_index]
-        ? _logicalOperators[_index].toUpperCase()
-        : "" }
-                        `);
+                        _arrayParams.push(
+                            `${_column} ${operator.toUpperCase()} $${_paramNumber}
+                             ${ _logicalOperators[_index] ? _logicalOperators[_index].toUpperCase() : "" }`
+                        );
                         _paramNumber++;
                         _arrayValues.push(value);
                     }
@@ -92,25 +84,19 @@ function ValidateOperators (_object, _objectKeys, _logicalOperators, _arrayParam
             {
                 if (_join)
                 {
-                    _arrayParams.push(`
-                    ${_join}.${_column} ${operator.toUpperCase()}
-                            $${_paramNumber} AND $${_paramNumber + 1}
-                            ${   _logicalOperators[_index]
-        ? _logicalOperators[_index].toUpperCase()
-        : "" }
-                    `);
+                    _arrayParams.push(
+                        `${_join}.${_column} ${operator.toUpperCase()} $${_paramNumber} AND $${_paramNumber + 1}
+                         ${ _logicalOperators[_index] ? _logicalOperators[_index].toUpperCase() : "" }`
+                    );
                     _paramNumber += 2;
                     _arrayValues.push(value[0], value[1]);
                 }
                 else
                 {
-                    _arrayParams.push(`
-                        ${_column} ${operator.toUpperCase()}
-                            $${_paramNumber} AND $${_paramNumber + 1}
-                            ${   _logicalOperators[_index]
-        ? _logicalOperators[_index].toUpperCase()
-        : "" }
-                    `);
+                    _arrayParams.push(
+                        `${_column} ${operator.toUpperCase()} $${_paramNumber} AND $${_paramNumber + 1}
+                         ${ _logicalOperators[_index] ? _logicalOperators[_index].toUpperCase() : "" }`
+                    );
                     _paramNumber += 2;
                     _arrayValues.push(value[0], value[1]);
                 }
@@ -119,23 +105,17 @@ function ValidateOperators (_object, _objectKeys, _logicalOperators, _arrayParam
             {
                 if (_join)
                 {
-                    _arrayParams.push(`
-                    ${_join}.${_column} ${operator.toUpperCase()}
-                            ${value}
-                            ${   _logicalOperators[_index]
-        ? _logicalOperators[_index].toUpperCase()
-        : "" }
-                    `);
+                    _arrayParams.push(
+                        `${_join}.${_column} ${operator.toUpperCase()} ${value}
+                         ${ _logicalOperators[_index] ? _logicalOperators[_index].toUpperCase() : "" }`
+                    );
                 }
                 else
                 {
-                    _arrayParams.push(`
-                        ${_column} ${operator.toUpperCase()}
-                            ${value}
-                            ${   _logicalOperators[_index]
-        ? _logicalOperators[_index].toUpperCase()
-        : "" }
-                    `);
+                    _arrayParams.push(
+                        `${_column} ${operator.toUpperCase()} ${value}
+                         ${ _logicalOperators[_index] ? _logicalOperators[_index].toUpperCase() : "" }`
+                    );
                 }
             }
             else if (operator === "in" || operator === "not in")
@@ -165,23 +145,19 @@ function ValidateOperators (_object, _objectKeys, _logicalOperators, _arrayParam
 
                 if (_join)
                 {
-                    _arrayParams.push(`
-                    ${_join}.${_column} ${operator.toUpperCase()}
+                    _arrayParams.push(
+                        `${_join}.${_column} ${operator.toUpperCase()}
                             ${inValues}
-                            ${   _logicalOperators[_index]
-        ? _logicalOperators[_index].toUpperCase()
-        : "" }
-                    `);
+                            ${ _logicalOperators[_index] ? _logicalOperators[_index].toUpperCase() : "" }`
+                    );
                 }
                 else
                 {
-                    _arrayParams.push(`
-                        ${_column} ${operator.toUpperCase()}
+                    _arrayParams.push(
+                        `${_column} ${operator.toUpperCase()}
                             ${inValues}
-                            ${   _logicalOperators[_index]
-        ? _logicalOperators[_index].toUpperCase()
-        : "" }
-                    `);
+                            ${ _logicalOperators[_index] ? _logicalOperators[_index].toUpperCase() : "" }`
+                    );
                 }
             }
             else
@@ -190,44 +166,36 @@ function ValidateOperators (_object, _objectKeys, _logicalOperators, _arrayParam
                 {
                     if (_join)
                     {
-                        _arrayParams.push(`
-                        ${_join}.${_column} ${operator.toUpperCase()} ${value}
-                            ${   _logicalOperators[_index]
-        ? _logicalOperators[_index].toUpperCase()
-        : "" }
-                        `);
+                        _arrayParams.push(
+                            `${_join}.${_column} ${operator.toUpperCase()} ${value}
+                             ${ _logicalOperators[_index] ? _logicalOperators[_index].toUpperCase() : "" }`
+                        );
                     }
                     else
                     {
-                        _arrayParams.push(`
-                        ${_column} ${operator.toUpperCase()} ${value}
-                            ${   _logicalOperators[_index]
-        ? _logicalOperators[_index].toUpperCase()
-        : "" }
-                        `);
+                        _arrayParams.push(
+                            `${_column} ${operator.toUpperCase()} ${value}
+                             ${ _logicalOperators[_index] ? _logicalOperators[_index].toUpperCase() : "" }`
+                        );
                     }
                 }
                 else
                 {
                     if (_join)
                     {
-                        _arrayParams.push(`
-                        ${_join}.${_column} ${operator.toUpperCase()} $${_paramNumber}
-                            ${   _logicalOperators[_index]
-        ? _logicalOperators[_index].toUpperCase()
-        : "" }
-                        `);
+                        _arrayParams.push(
+                            `${_join}.${_column} ${operator.toUpperCase()} $${_paramNumber}
+                             ${ _logicalOperators[_index] ? _logicalOperators[_index].toUpperCase() : "" }`
+                        );
                         _paramNumber++;
                         _arrayValues.push(value);
                     }
                     else
                     {
-                        _arrayParams.push(`
-                        ${_column} ${operator.toUpperCase()} $${_paramNumber}
-                            ${   _logicalOperators[_index]
-        ? _logicalOperators[_index].toUpperCase()
-        : "" }
-                        `);
+                        _arrayParams.push(
+                            `${_column} ${operator.toUpperCase()} $${_paramNumber}
+                             ${ _logicalOperators[_index] ? _logicalOperators[_index].toUpperCase() : "" }`
+                        );
                         _paramNumber++;
                         _arrayValues.push(value);
                     }
