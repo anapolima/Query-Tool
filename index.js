@@ -8,15 +8,16 @@ class QueryTool
     #pool
     #connection
     #connectionStatus
+    
     #insertResult
     #selectResult
     #updateResult
     #deleteResult
 
-    #insertTable
-    #insertColumns
-    #insertReturning
-    #insertParams
+    #insertTable 
+    #insertColumns 
+    #insertReturning 
+    #insertParams 
 
     #selectTable
     #selectColumns
@@ -603,7 +604,7 @@ class QueryTool
                     throw new Error ("When using the WHERE clause, you must provide the logical operators");
                 }
 
-                const validOperators = this.#ValidateOperators(where, whereColumns, logicalOperators, selectParams, values, param, this.#selectResult);
+                const validOperators = this.#ValidateOperators(where, whereColumns, logicalOperators, selectParams, values, param, this.#selectResult, false);
 
                 if (validOperators)
                 {
@@ -632,7 +633,7 @@ class QueryTool
                 const havingParams = [];
                 const havingLogicalOperators = having.logicalOperators ? [ ...having.logicalOperators ] : [];
 
-                const validOperators = this.#ValidateOperators(having.columns, havingColumns, havingLogicalOperators, havingParams, values, param, this.#selectResult);
+                const validOperators = this.#ValidateOperators(having.columns, havingColumns, havingLogicalOperators, havingParams, values, param, this.#selectResult, false);
 
                 if (validOperators)
                 {
@@ -858,7 +859,7 @@ class QueryTool
                     throw new Error ("When using the WHERE clause, you must provide the logical operators");
                 }
 
-                const validOperators = this.#ValidateOperators(where, whereColumns, logicalOperators, updateWhere, values, param, this.#updateResult);
+                const validOperators = this.#ValidateOperators(where, whereColumns, logicalOperators, updateWhere, values, param, this.#updateResult, false);
 
                 if (validOperators)
                 {
@@ -1150,7 +1151,7 @@ class QueryTool
                     throw new Error ("When using the WHERE clause, you must provide the logical operators");
                 }
 
-                const validOperators = this.#ValidateOperators(where, whereColumns, logicalOperators, deleteWhere, values, param, this.#deleteResult);
+                const validOperators = this.#ValidateOperators(where, whereColumns, logicalOperators, deleteWhere, values, param, this.#deleteResult, false);
 
                 if (validOperators)
                 {
