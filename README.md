@@ -9,7 +9,12 @@ You can install this package by running
 $ npm i query-tool
 ```
 
+## What is new on version 2.0.0
+The 2.0.0 version was released to prevent possible compatibility issues.
 
+In version 2.0.0, all methods that used to be in PascalCase are now in camelCase. Since _delete_ is a JavaScript reserved word, the old _Delete_ method is now `deleteFrom`. Also, when using the `update` method, the `type` you must supply, which used to be _string_ or _integer_, is now _string_ or _number_. The _EndClient_ and _EndPool_ methods are now one, called `endConnection`.
+
+The documentation is up to date, you can check it.
 ## Support
 QueryTool is free software. If you encounter a bug with the library please open an issue on the GitHub repo. If you have questions unanswered by the documentation please open an issue pointing out how the documentation was unclear and I will do my best to make it better!
 
