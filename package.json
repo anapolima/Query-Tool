@@ -5,8 +5,7 @@
   "name": "query-tool",
   "description": "The QueryTool is a library that allows easier and faster connections with Postgres databases. Whit it, you can make insertions, selections, updates and deletions in the database in a simple and effective way.",
   "version": "1.0.1",
-  "main": "index.js",
-  "devDependencies": {},
+  "main": "./lib",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -34,5 +33,8 @@
   "bugs": {
     "url": "https://github.com/anapolima/Query-Tool/issues"
   },
-  "homepage": "https://github.com/anapolima/Query-Tool/wiki"
+  "homepage": "https://github.com/anapolima/Query-Tool/wiki",
+  "devDependencies": {
+    "eslint": "^8.2.0"
+  }
 }
