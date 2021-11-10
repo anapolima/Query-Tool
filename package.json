@@ -4,7 +4,7 @@
   },
   "name": "query-tool",
   "description": "The QueryTool is a library that allows easier and faster connections with Postgres databases. Whit it, you can make insertions, selections, updates and deletions in the database in a simple and effective way.",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "main": "./lib",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
